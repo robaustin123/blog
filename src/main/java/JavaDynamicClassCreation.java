@@ -1,6 +1,5 @@
 import sun.misc.Unsafe;
 
-
 import javax.tools.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,18 +21,17 @@ public class JavaDynamicClassCreation {
     public void dynamicClassCreation() throws ClassNotFoundException, IllegalAccessException, InstantiationException, URISyntaxException, NoSuchFieldException {
 
 
-        final String fullName = "DynamicClassCreation";
-
+        final String className = "DynamicClassCreation";
+        final String fullName = className;
 
         final StringBuilder source = new StringBuilder();
-        source.append("public class DynamicClassCreation {\n");
+        source.append("public class " + className + " {\n");
         source.append(" public String toString() {\n");
-        source.append(" return \"This was written by Rob Austin\";");
+        source.append("     return \"Java Dynamic Class Creation was written by Rob Austin\";");
         source.append(" }\n");
         source.append("}\n");
 
-        System.out.println(source);
-
+        // A byte array output stream containing the bytes that would be written to the .class file
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
         final SimpleJavaFileObject simpleJavaFileObject = new SimpleJavaFileObject(URI.create("string:///" + fullName.replace('.', '/')
@@ -50,9 +48,9 @@ public class JavaDynamicClassCreation {
             }
         };
 
-        final JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
         final JavaFileManager javaFileManager = new
-                ForwardingJavaFileManager(javaCompiler
+
+                ForwardingJavaFileManager(ToolProvider.getSystemJavaCompiler()
                         .getStandardFileManager(null, null, null)) {
 
                     @Override
@@ -64,18 +62,19 @@ public class JavaDynamicClassCreation {
                     }
                 };
 
-        javaCompiler.getTask(null, javaFileManager, null, null, null, singletonList(simpleJavaFileObject)).call();
+        ToolProvider.getSystemJavaCompiler().getTask(null, javaFileManager, null, null, null, singletonList(simpleJavaFileObject)).call();
         final byte[] bytes = byteArrayOutputStream.toByteArray();
 
+        // use the unsafe class to load in the class bytes
         final Field f = Unsafe.class.getDeclaredField("theUnsafe");
         f.setAccessible(true);
         final Unsafe unsafe = (Unsafe) f.get(null);
-
         final Class aClass = unsafe.defineClass(fullName, bytes, 0, bytes.length);
 
         final Object o = aClass.newInstance();
-        System.out.println(o);
 
+        System.out.println(source);
+        System.out.println(o);
 
     }
 
