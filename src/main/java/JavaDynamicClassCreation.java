@@ -11,7 +11,9 @@ import java.net.URISyntaxException;
 import static java.util.Collections.singletonList;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
-
+/**
+ * by Rob Austin
+ */
 public class JavaDynamicClassCreation {
 
     public void dynamicClassCreation() throws ClassNotFoundException, IllegalAccessException, InstantiationException, URISyntaxException, NoSuchFieldException {
@@ -21,7 +23,7 @@ public class JavaDynamicClassCreation {
         final String fullClassName = path.replace('.', '/') + "/" + className;
 
         final StringBuilder source = new StringBuilder();
-        source.append("package " + path+";");
+        source.append("package " + path + ";");
         source.append("public class " + className + " {\n");
         source.append(" public String toString() {\n");
         source.append("     return \"HelloWorld - Java Dynamic Class Creation was written by Rob Austin\";");
@@ -48,14 +50,14 @@ public class JavaDynamicClassCreation {
         final JavaFileManager javaFileManager = new ForwardingJavaFileManager(
                 ToolProvider.getSystemJavaCompiler().getStandardFileManager(null, null, null)) {
 
-                    @Override
-                    public JavaFileObject getJavaFileForOutput(Location location,
-                                                               String className,
-                                                               JavaFileObject.Kind kind,
-                                                               FileObject sibling) throws IOException {
-                        return simpleJavaFileObject;
-                    }
-                };
+            @Override
+            public JavaFileObject getJavaFileForOutput(Location location,
+                                                       String className,
+                                                       JavaFileObject.Kind kind,
+                                                       FileObject sibling) throws IOException {
+                return simpleJavaFileObject;
+            }
+        };
 
         ToolProvider.getSystemJavaCompiler().getTask(
                 null, javaFileManager, null, null, null, singletonList(simpleJavaFileObject)).call();
