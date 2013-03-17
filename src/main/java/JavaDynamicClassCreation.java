@@ -14,28 +14,25 @@ import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 public class JavaDynamicClassCreation {
 
-    public static final void main(String... args) throws ClassNotFoundException, URISyntaxException, NoSuchFieldException, InstantiationException, IllegalAccessException {
-        new JavaDynamicClassCreation().dynamicClassCreation();
-    }
-
     public void dynamicClassCreation() throws ClassNotFoundException, IllegalAccessException, InstantiationException, URISyntaxException, NoSuchFieldException {
 
-
-        final String className = "DynamicClassCreation";
-        final String fullName = className;
+        final String className = "HelloWorld";
+        final String path = "com.bounded.buffer";
+        final String fullClassName = path.replace('.', '/') + "/" + className;
 
         final StringBuilder source = new StringBuilder();
+        source.append("package " + path+";");
         source.append("public class " + className + " {\n");
         source.append(" public String toString() {\n");
-        source.append("     return \"Java Dynamic Class Creation was written by Rob Austin\";");
+        source.append("     return \"HelloWorld - Java Dynamic Class Creation was written by Rob Austin\";");
         source.append(" }\n");
         source.append("}\n");
 
         // A byte array output stream containing the bytes that would be written to the .class file
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-        final SimpleJavaFileObject simpleJavaFileObject = new SimpleJavaFileObject(URI.create("string:///" + fullName.replace('.', '/')
-                + SOURCE.extension), SOURCE) {
+        final SimpleJavaFileObject simpleJavaFileObject
+                = new SimpleJavaFileObject(URI.create(fullClassName + ".java"), SOURCE) {
 
             @Override
             public CharSequence getCharContent(boolean ignoreEncodingErrors) {
@@ -48,10 +45,8 @@ public class JavaDynamicClassCreation {
             }
         };
 
-        final JavaFileManager javaFileManager = new
-
-                ForwardingJavaFileManager(ToolProvider.getSystemJavaCompiler()
-                        .getStandardFileManager(null, null, null)) {
+        final JavaFileManager javaFileManager = new ForwardingJavaFileManager(
+                ToolProvider.getSystemJavaCompiler().getStandardFileManager(null, null, null)) {
 
                     @Override
                     public JavaFileObject getJavaFileForOutput(Location location,
@@ -62,20 +57,24 @@ public class JavaDynamicClassCreation {
                     }
                 };
 
-        ToolProvider.getSystemJavaCompiler().getTask(null, javaFileManager, null, null, null, singletonList(simpleJavaFileObject)).call();
+        ToolProvider.getSystemJavaCompiler().getTask(
+                null, javaFileManager, null, null, null, singletonList(simpleJavaFileObject)).call();
+
         final byte[] bytes = byteArrayOutputStream.toByteArray();
 
         // use the unsafe class to load in the class bytes
         final Field f = Unsafe.class.getDeclaredField("theUnsafe");
         f.setAccessible(true);
         final Unsafe unsafe = (Unsafe) f.get(null);
-        final Class aClass = unsafe.defineClass(fullName, bytes, 0, bytes.length);
+        final Class aClass = unsafe.defineClass(fullClassName, bytes, 0, bytes.length);
 
         final Object o = aClass.newInstance();
-
-        System.out.println(source);
         System.out.println(o);
 
+    }
+
+    public static final void main(String... args) throws ClassNotFoundException, URISyntaxException, NoSuchFieldException, InstantiationException, IllegalAccessException {
+        new JavaDynamicClassCreation().dynamicClassCreation();
     }
 
 }
