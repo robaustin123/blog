@@ -1,6 +1,4 @@
-/**
- * most cpu's have the ability to compare zero and jump as a single operation
- */
+
 public class FastLoop {
 
     public static long work = 1;
