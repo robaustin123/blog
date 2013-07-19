@@ -2,21 +2,12 @@ import java.lang.reflect.Field;
 
 public class LazyConcurrentBlockingIntQueue {
 
-
-    private static final long READ_LOCATION_OFFSET;
-    private static final long WRITE_LOCATION_OFFSET;
-
-    private int size = 1024 * 100;
+    private int size = 1024 * 1024;
     private final int[] data = new int[size];
 
-    // can only be updated from the reader thread
-    private volatile int readLocation = 0;
-
-    // can only be updated from the writer thread
-    private volatile int writeLocation = 0;
-
-    static sun.misc.Unsafe unsafe;
-
+    private static sun.misc.Unsafe unsafe;
+    private static final long READ_LOCATION_OFFSET;
+    private static final long WRITE_LOCATION_OFFSET;
     private static final int shift;
 
     static {
@@ -33,6 +24,8 @@ public class LazyConcurrentBlockingIntQueue {
         }
     }
 
+    private static final int base = unsafe.arrayBaseOffset(int[].class);
+
     static {
         int scale = unsafe.arrayIndexScale(int[].class);
         if ((scale & (scale - 1)) != 0)
@@ -40,8 +33,10 @@ public class LazyConcurrentBlockingIntQueue {
         shift = 31 - Integer.numberOfLeadingZeros(scale);
     }
 
-    private static final int base = unsafe.arrayBaseOffset(int[].class);
-
+    // can only be updated from the reader thread
+    private volatile int readLocation = 0;
+    // can only be updated from the writer thread
+    private volatile int writeLocation = 0;
 
     /**
      * the writes must always occur on the same thread,
@@ -73,12 +68,12 @@ public class LazyConcurrentBlockingIntQueue {
 
     }
 
-
     /**
      * the reads must always occur on the same thread
      *
      * @return
      */
+
     public int take() {
 
 
@@ -99,9 +94,8 @@ public class LazyConcurrentBlockingIntQueue {
                 // spin lock
             }
 
-        final int value = unsafe.getIntVolatile(data, ((long) nextReadLocation << shift) + base);
+        final int value = data[nextReadLocation];
 
-        // add back the new location of the add offset
         unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
 
         return value;
