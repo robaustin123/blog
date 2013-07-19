@@ -54,7 +54,7 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
 
                     @Override
                     public void run() {
-                        int value;
+
                         do {
                             final int valueRead = queue.take();
                             if (valueRead == times) {

@@ -6,7 +6,7 @@ public class LazyConcurrentBlockingIntQueue {
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
 
-    private int size = 1024;
+    private int size = 1024 * 100;
     private final int[] data = new int[size];
 
     // can only be updated from the reader thread
