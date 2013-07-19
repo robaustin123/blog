@@ -87,7 +87,7 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
      * @throws Exception
      */
 
-    public long lazyArrayBlockingQueueReadAndWrites(final long times) throws Exception {
+    public long arrayBlockingQueueReadAndWrites(final long times) throws Exception {
 
         final ArrayBlockingQueue queue = new ArrayBlockingQueue(1024);
 
@@ -178,9 +178,9 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
 
         for (int pwr = 2; pwr < 11; pwr++) {
             long i = (long) Math.pow(8, pwr);
-            long time1 = this.lazyArrayBlockingQueueReadAndWrites(i);
+            long time1 = this.arrayBlockingQueueReadAndWrites(i);
             long time2 = this.lazyConcurrentBlockingIntQueueReadsAndWrites(i);
-            System.out.printf("Performing %,d loops, lazyArrayBlockingQueueReadAndWrites() took %.3f us and using lazyConcurrentBlockingIntQueueReadsAndWrites took %.3f us on average, ratio=%.1f%n",
+            System.out.printf("Performing %,d loops, arrayBlockingQueueReadAndWrites() took %.3f us and using lazyConcurrentBlockingIntQueueReadsAndWrites took %.3f us on average, ratio=%.1f%n",
                     i, time1 / 1e3, time2 / 1e3, (double) time1 / time2);
         }
 
