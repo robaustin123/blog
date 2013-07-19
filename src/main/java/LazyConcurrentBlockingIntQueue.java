@@ -1,6 +1,6 @@
 import java.lang.reflect.Field;
 
-public class LazyConcurrentBlockingQueue {
+public class LazyConcurrentBlockingIntQueue {
 
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
@@ -24,9 +24,9 @@ public class LazyConcurrentBlockingQueue {
             field.setAccessible(true);
             unsafe = (sun.misc.Unsafe) field.get(null);
             READ_LOCATION_OFFSET = unsafe.objectFieldOffset
-                    (LazyConcurrentBlockingQueue.class.getDeclaredField("readLocation"));
+                    (LazyConcurrentBlockingIntQueue.class.getDeclaredField("readLocation"));
             WRITE_LOCATION_OFFSET = unsafe.objectFieldOffset
-                    (LazyConcurrentBlockingQueue.class.getDeclaredField("writeLocation"));
+                    (LazyConcurrentBlockingIntQueue.class.getDeclaredField("writeLocation"));
         } catch (Exception e) {
             throw new AssertionError(e);
         }
