@@ -14,19 +14,19 @@ public class LazyConcurrentBlockingIntQueueTest {
     @Test
     public void testRead() throws Exception {
         final LazyConcurrentBlockingIntQueue lazyConcurrentBlockingIntQueue = new LazyConcurrentBlockingIntQueue();
-        lazyConcurrentBlockingIntQueue.write(10);
-        final int value = lazyConcurrentBlockingIntQueue.read();
+        lazyConcurrentBlockingIntQueue.add(10);
+        final int value = lazyConcurrentBlockingIntQueue.take();
         Assert.assertEquals(10, value);
     }
 
     @Test
     public void testRead2() throws Exception {
         final LazyConcurrentBlockingIntQueue lazyConcurrentBlockingIntQueue = new LazyConcurrentBlockingIntQueue();
-        lazyConcurrentBlockingIntQueue.write(10);
-        lazyConcurrentBlockingIntQueue.write(11);
-        final int value = lazyConcurrentBlockingIntQueue.read();
+        lazyConcurrentBlockingIntQueue.add(10);
+        lazyConcurrentBlockingIntQueue.add(11);
+        final int value = lazyConcurrentBlockingIntQueue.take();
         Assert.assertEquals(10, value);
-        final int value1 = lazyConcurrentBlockingIntQueue.read();
+        final int value1 = lazyConcurrentBlockingIntQueue.take();
         Assert.assertEquals(11, value1);
     }
 
@@ -35,14 +35,14 @@ public class LazyConcurrentBlockingIntQueueTest {
         final LazyConcurrentBlockingIntQueue lazyConcurrentBlockingIntQueue = new LazyConcurrentBlockingIntQueue();
 
         for (int i = 1; i < 50; i++) {
-            lazyConcurrentBlockingIntQueue.write(i);
-            final int value = lazyConcurrentBlockingIntQueue.read();
+            lazyConcurrentBlockingIntQueue.add(i);
+            final int value = lazyConcurrentBlockingIntQueue.take();
             Assert.assertEquals(i, value);
         }
     }
 
     /**
-     * faster reader
+     * reader and add, reader and writers on different threads
      *
      * @throws Exception
      */
@@ -59,7 +59,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            lazyConcurrentBlockingIntQueue.write(i);
+                            lazyConcurrentBlockingIntQueue.add(i);
                             try {
                                 Thread.sleep((int) (Math.random() * 100));
                             } catch (InterruptedException e) {
@@ -78,7 +78,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = lazyConcurrentBlockingIntQueue.read();
+                            final int value = lazyConcurrentBlockingIntQueue.take();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {
@@ -119,7 +119,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            lazyConcurrentBlockingIntQueue.write(i);
+                            lazyConcurrentBlockingIntQueue.add(i);
                             try {
                                 Thread.sleep((int) (Math.random() * 3));
                             } catch (InterruptedException e) {
@@ -138,7 +138,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = lazyConcurrentBlockingIntQueue.read();
+                            final int value = lazyConcurrentBlockingIntQueue.take();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {
@@ -174,7 +174,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            lazyConcurrentBlockingIntQueue.write(i);
+                            lazyConcurrentBlockingIntQueue.add(i);
 
                         }
 
@@ -189,7 +189,7 @@ public class LazyConcurrentBlockingIntQueueTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = lazyConcurrentBlockingIntQueue.read();
+                            final int value = lazyConcurrentBlockingIntQueue.take();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {

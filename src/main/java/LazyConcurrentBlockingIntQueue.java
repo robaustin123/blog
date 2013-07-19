@@ -2,6 +2,7 @@ import java.lang.reflect.Field;
 
 public class LazyConcurrentBlockingIntQueue {
 
+
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
 
@@ -47,7 +48,7 @@ public class LazyConcurrentBlockingIntQueue {
      *
      * @param value
      */
-    public void write(int value) {
+    public void add(int value) {
 
         int nextWriteLocation = writeLocation + 1;
 
@@ -67,7 +68,7 @@ public class LazyConcurrentBlockingIntQueue {
 
         unsafe.putOrderedInt(data, ((long) nextWriteLocation << shift) + base, value);
 
-        // write back the new location of the write offset
+        // add back the new location of the add offset
         unsafe.putOrderedInt(this, WRITE_LOCATION_OFFSET, nextWriteLocation);
 
     }
@@ -78,7 +79,7 @@ public class LazyConcurrentBlockingIntQueue {
      *
      * @return
      */
-    public int read() {
+    public int take() {
 
 
         int nextReadLocation = readLocation + 1;
@@ -93,14 +94,14 @@ public class LazyConcurrentBlockingIntQueue {
 
             }
         } else
-            // we are blocked reading waiting for another write
+            // we are blocked reading waiting for another add
             while (writeLocation + 1 == nextReadLocation) {
                 // spin lock
             }
 
         final int value = unsafe.getIntVolatile(data, ((long) nextReadLocation << shift) + base);
 
-        // write back the new location of the read offset
+        // add back the new location of the add offset
         unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
 
         return value;
