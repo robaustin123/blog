@@ -3,14 +3,9 @@ import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
 
-/**
- * Created with IntelliJ IDEA.
- * User: robaustin
- * Date: 30/06/2013
- * Time: 23:02
- * To change this template use File | Settings | File Templates.
- */
-public class FastRingBufferTest {
+
+public class LazyConcurrentBlockingQueueTest {
+
     @Test
     public void testWrite() throws Exception {
 
@@ -18,30 +13,30 @@ public class FastRingBufferTest {
 
     @Test
     public void testRead() throws Exception {
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
-        fastRingBuffer.write(10);
-        final int value = fastRingBuffer.read();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
+        lazyConcurrentBlockingQueue.write(10);
+        final int value = lazyConcurrentBlockingQueue.read();
         Assert.assertEquals(10, value);
     }
 
     @Test
     public void testRead2() throws Exception {
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
-        fastRingBuffer.write(10);
-        fastRingBuffer.write(11);
-        final int value = fastRingBuffer.read();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
+        lazyConcurrentBlockingQueue.write(10);
+        lazyConcurrentBlockingQueue.write(11);
+        final int value = lazyConcurrentBlockingQueue.read();
         Assert.assertEquals(10, value);
-        final int value1 = fastRingBuffer.read();
+        final int value1 = lazyConcurrentBlockingQueue.read();
         Assert.assertEquals(11, value1);
     }
 
     @Test
     public void testReadLoop() throws Exception {
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
 
         for (int i = 1; i < 50; i++) {
-            fastRingBuffer.write(i);
-            final int value = fastRingBuffer.read();
+            lazyConcurrentBlockingQueue.write(i);
+            final int value = lazyConcurrentBlockingQueue.read();
             Assert.assertEquals(i, value);
         }
     }
@@ -54,7 +49,7 @@ public class FastRingBufferTest {
     @Test
     public void testWithFasterReader() throws Exception {
 
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
         final int max = 100;
         final CountDownLatch countDown = new CountDownLatch(1);
 
@@ -64,7 +59,7 @@ public class FastRingBufferTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            fastRingBuffer.write(i);
+                            lazyConcurrentBlockingQueue.write(i);
                             try {
                                 Thread.sleep((int) (Math.random() * 100));
                             } catch (InterruptedException e) {
@@ -83,7 +78,7 @@ public class FastRingBufferTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = fastRingBuffer.read();
+                            final int value = lazyConcurrentBlockingQueue.read();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {
@@ -114,7 +109,7 @@ public class FastRingBufferTest {
     @Test
     public void testWithFasterWriter() throws Exception {
 
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
         final int max = 200;
         final CountDownLatch countDown = new CountDownLatch(1);
 
@@ -124,7 +119,7 @@ public class FastRingBufferTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            fastRingBuffer.write(i);
+                            lazyConcurrentBlockingQueue.write(i);
                             try {
                                 Thread.sleep((int) (Math.random() * 3));
                             } catch (InterruptedException e) {
@@ -143,7 +138,7 @@ public class FastRingBufferTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = fastRingBuffer.read();
+                            final int value = lazyConcurrentBlockingQueue.read();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {
@@ -169,7 +164,7 @@ public class FastRingBufferTest {
     @Test
     public void testFlatOut() throws Exception {
 
-        final FastRingBuffer fastRingBuffer = new FastRingBuffer();
+        final LazyConcurrentBlockingQueue lazyConcurrentBlockingQueue = new LazyConcurrentBlockingQueue();
         final int max = 101024;
         final CountDownLatch countDown = new CountDownLatch(1);
 
@@ -179,7 +174,7 @@ public class FastRingBufferTest {
                     @Override
                     public void run() {
                         for (int i = 1; i < max; i++) {
-                            fastRingBuffer.write(i);
+                            lazyConcurrentBlockingQueue.write(i);
 
                         }
 
@@ -194,7 +189,7 @@ public class FastRingBufferTest {
                     public void run() {
                         for (int i = 1; i < max; i++) {
 
-                            final int value = fastRingBuffer.read();
+                            final int value = lazyConcurrentBlockingQueue.read();
                             try {
                                 Assert.assertEquals(i, value);
                             } catch (Error e) {

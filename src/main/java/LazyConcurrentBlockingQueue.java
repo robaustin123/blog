@@ -1,6 +1,6 @@
 import java.lang.reflect.Field;
 
-public class FastRingBuffer {
+public class LazyConcurrentBlockingQueue {
 
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
@@ -24,9 +24,9 @@ public class FastRingBuffer {
             field.setAccessible(true);
             unsafe = (sun.misc.Unsafe) field.get(null);
             READ_LOCATION_OFFSET = unsafe.objectFieldOffset
-                    (FastRingBuffer.class.getDeclaredField("readLocation"));
+                    (LazyConcurrentBlockingQueue.class.getDeclaredField("readLocation"));
             WRITE_LOCATION_OFFSET = unsafe.objectFieldOffset
-                    (FastRingBuffer.class.getDeclaredField("writeLocation"));
+                    (LazyConcurrentBlockingQueue.class.getDeclaredField("writeLocation"));
         } catch (Exception e) {
             throw new AssertionError(e);
         }
