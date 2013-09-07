@@ -63,6 +63,7 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
                             }
 
                             if (valueRead != readerCounter.incrementAndGet()) {
+                                final int valueRead2 = queue.take();
                                 dataOutOfSequence.set(true);
                                 countDown.countDown();
                                 return;

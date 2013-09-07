@@ -1,20 +1,19 @@
+import sun.misc.Unsafe;
+
 import java.lang.reflect.Field;
 
 public class LazyConcurrentBlockingIntQueue {
 
-    private int size = 1024 * 1024;
-    private final int[] data = new int[size];
-
-    private static sun.misc.Unsafe unsafe;
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
     private static final int shift;
+    private static final Unsafe unsafe;
 
     static {
         try {
-            Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
             field.setAccessible(true);
-            unsafe = (sun.misc.Unsafe) field.get(null);
+            unsafe = (Unsafe) field.get(null);
             READ_LOCATION_OFFSET = unsafe.objectFieldOffset
                     (LazyConcurrentBlockingIntQueue.class.getDeclaredField("readLocation"));
             WRITE_LOCATION_OFFSET = unsafe.objectFieldOffset
@@ -33,8 +32,12 @@ public class LazyConcurrentBlockingIntQueue {
         shift = 31 - Integer.numberOfLeadingZeros(scale);
     }
 
+    private final int size = 99;
+    private final int[] data = new int[size];
+
     // can only be updated from the reader thread
     private volatile int readLocation = 0;
+
     // can only be updated from the writer thread
     private volatile int writeLocation = 0;
 
@@ -45,11 +48,12 @@ public class LazyConcurrentBlockingIntQueue {
      */
     public void add(int value) {
 
+
         int nextWriteLocation = writeLocation + 1;
 
-        if (nextWriteLocation == size)
+        if (nextWriteLocation == size) {
             nextWriteLocation = 0;
-
+        }
 
         if (nextWriteLocation == size - 1) {
             while (readLocation == 0) {
@@ -63,9 +67,8 @@ public class LazyConcurrentBlockingIntQueue {
 
         unsafe.putOrderedInt(data, ((long) nextWriteLocation << shift) + base, value);
 
-        // add back the new location of the add offset
+        // write back the next write location
         unsafe.putOrderedInt(this, WRITE_LOCATION_OFFSET, nextWriteLocation);
-
     }
 
     /**
@@ -76,12 +79,10 @@ public class LazyConcurrentBlockingIntQueue {
 
     public int take() {
 
-
         int nextReadLocation = readLocation + 1;
 
         if (nextReadLocation == size)
             nextReadLocation = 0;
-
 
         if (nextReadLocation == size - 1) {
             while (writeLocation == 0) {
@@ -90,14 +91,13 @@ public class LazyConcurrentBlockingIntQueue {
             }
         } else
             // we are blocked reading waiting for another add
-            while (writeLocation + 1 == nextReadLocation) {
+            while (writeLocation == nextReadLocation || writeLocation == readLocation) {
                 // spin lock
             }
 
-        final int value = data[nextReadLocation];
-
-        unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
-
+        final int value = unsafe.getIntVolatile(data, ((long) nextReadLocation << shift) + base);
+        unsafe.putIntVolatile(this, READ_LOCATION_OFFSET, nextReadLocation);
         return value;
+
     }
 }
