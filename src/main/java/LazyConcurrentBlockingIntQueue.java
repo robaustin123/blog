@@ -32,14 +32,14 @@ public class LazyConcurrentBlockingIntQueue {
         shift = 31 - Integer.numberOfLeadingZeros(scale);
     }
 
-    private final int size = 99;
+    private final int size = 1024;
     private final int[] data = new int[size];
 
     // can only be updated from the reader thread
-    private volatile int readLocation = 0;
+    private int readLocation = 0;
 
     // can only be updated from the writer thread
-    private volatile int writeLocation = 0;
+    private int writeLocation = 0;
 
     /**
      * the writes must always occur on the same thread,
@@ -96,7 +96,7 @@ public class LazyConcurrentBlockingIntQueue {
             }
 
         final int value = unsafe.getIntVolatile(data, ((long) nextReadLocation << shift) + base);
-        unsafe.putIntVolatile(this, READ_LOCATION_OFFSET, nextReadLocation);
+        unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
         return value;
 
     }
