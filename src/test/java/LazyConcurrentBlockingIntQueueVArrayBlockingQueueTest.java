@@ -40,7 +40,7 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
 
                         int value;
                         do {
-                            value = writeCounter.incrementAndGet();
+                            value = writeCounter.getAndIncrement();
                             queue.add(value);
                         } while (value <= times);
                     }
@@ -62,8 +62,8 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
                                 return;
                             }
 
-                            if (valueRead != readerCounter.incrementAndGet()) {
-                                final int valueRead2 = queue.take();
+                            if (valueRead != readerCounter.getAndIncrement()) {
+
                                 dataOutOfSequence.set(true);
                                 countDown.countDown();
                                 return;
@@ -95,7 +95,6 @@ public class LazyConcurrentBlockingIntQueueVArrayBlockingQueueTest {
         final CountDownLatch countDown = new CountDownLatch(1);
 
         final AtomicBoolean error = new AtomicBoolean();
-
 
         final AtomicInteger writeCounter = new AtomicInteger(0);
         final AtomicInteger readerCounter = new AtomicInteger(0);

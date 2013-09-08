@@ -36,10 +36,10 @@ public class LazyConcurrentBlockingIntQueue {
     private final int[] data = new int[size];
 
     // can only be updated from the reader thread
-    private int readLocation = 0;
+    private volatile int readLocation = 0;
 
     // can only be updated from the writer thread
-    private int writeLocation = 0;
+    private volatile int writeLocation = 0;
 
     /**
      * the writes must always occur on the same thread,
@@ -65,10 +65,12 @@ public class LazyConcurrentBlockingIntQueue {
             }
         }
 
-        unsafe.putOrderedInt(data, ((long) nextWriteLocation << shift) + base, value);
+        unsafe.putOrderedInt(data, ((long) writeLocation << shift) + base, value);
 
         // write back the next write location
         unsafe.putOrderedInt(this, WRITE_LOCATION_OFFSET, nextWriteLocation);
+
+        // writeLocation =  nextWriteLocation;
     }
 
     /**
@@ -91,12 +93,13 @@ public class LazyConcurrentBlockingIntQueue {
             }
         } else
             // we are blocked reading waiting for another add
-            while (writeLocation == nextReadLocation || writeLocation == readLocation) {
+            while (writeLocation == readLocation) {
                 // spin lock
             }
 
-        final int value = unsafe.getIntVolatile(data, ((long) nextReadLocation << shift) + base);
+        final int value = unsafe.getIntVolatile(data, ((long) readLocation << shift) + base);
         unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
+        //   readLocation = nextReadLocation;
         return value;
 
     }
