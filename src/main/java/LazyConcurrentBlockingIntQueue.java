@@ -51,19 +51,15 @@ public class LazyConcurrentBlockingIntQueue {
 
         int nextWriteLocation = writeLocation + 1;
 
-        if (nextWriteLocation == size) {
+        if (nextWriteLocation == size)
             nextWriteLocation = 0;
-        }
 
-        if (nextWriteLocation == size - 1) {
+        if (nextWriteLocation == size - 1)
             while (readLocation == 0) {
-                // spin lock
             }
-        } else {
+        else
             while (nextWriteLocation == readLocation - 1) {
-                // spin lock
             }
-        }
 
         unsafe.putOrderedInt(data, ((long) writeLocation << shift) + base, value);
 
@@ -86,20 +82,15 @@ public class LazyConcurrentBlockingIntQueue {
         if (nextReadLocation == size)
             nextReadLocation = 0;
 
-        if (nextReadLocation == size - 1) {
-            while (writeLocation == 0) {
-                // spin lock
 
-            }
-        } else
-            // we are blocked reading waiting for another add
-            while (writeLocation == readLocation) {
-                // spin lock
-            }
+        // we are blocked reading waiting for another add
+        while (writeLocation == readLocation) {
+            // spin lock
+        }
 
         final int value = unsafe.getIntVolatile(data, ((long) readLocation << shift) + base);
         unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
-        //   readLocation = nextReadLocation;
+
         return value;
 
     }
