@@ -26,6 +26,8 @@ public class LazyConcurrentBlockingIntQueue {
     // about 128 kb to fit in a L1 cache ( the 4 is from the size of a int, 4 bytes )
     private final int size = 1024 * (128 / 4);
 
+
+    // intentionally not volatile, as we are carefully ensuring that the memory barriers are controlled below by other objects
     private final int[] data = new int[size];
 
     // we set volatiles here, for the writes we use putOrderedInt ( as this is quicker ),
