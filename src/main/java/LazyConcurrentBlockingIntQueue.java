@@ -22,8 +22,14 @@ public class LazyConcurrentBlockingIntQueue {
         }
     }
 
-    private final int size = 1024;
+
+    // about 128 kb to fit in a L1 cache ( the 4 is from the size of a int, 4 bytes )
+    private final int size = 1024 * (128 / 4);
+
     private final int[] data = new int[size];
+
+    // we set volatiles here, for the writes we use putOrderedInt ( as this is quicker ),
+    // but for the read the is no performance benefit un using getOrderedInt.
     private volatile int readLocation = 0;
     private volatile int writeLocation = 0;
 
@@ -34,17 +40,25 @@ public class LazyConcurrentBlockingIntQueue {
      */
     public void add(int value) {
 
+        // we want to minimize the number of volatile reads, so we read the writeLocation just once.
         final int writeLocation = this.writeLocation;
+
+        // sets the nextWriteLocation my moving it on by 1, this may cause it it wrap back to the start.
         final int nextWriteLocation = (writeLocation + 1 == size) ? 0 : writeLocation + 1;
 
         if (nextWriteLocation == size - 1)
 
             while (readLocation == 0)
-                takeAtBlock();
+                // // this condition handles the case where writer has caught up with the read,
+                // we will wait for a read, ( which will cause a change on the read location )
+                blockAtAdd();
 
         else
 
+
             while (nextWriteLocation + 1 == readLocation)
+                // this condition handles the case general case where the read is at the start of the backing array and we are at the end,
+                // blocks as our backing array is full, we will wait for a read, ( which will cause a change on the read location )
                 blockAtAdd();
 
 
@@ -66,16 +80,16 @@ public class LazyConcurrentBlockingIntQueue {
 
     public int take() {
 
+        // we want to minimize the number of volatile reads, so we read the readLocation just once.
         final int readLocation = this.readLocation;
-        int nextReadLocation = readLocation + 1;
 
-        if (nextReadLocation == size)
-            nextReadLocation = 0;
+        // sets the nextReadLocation my moving it on by 1, this may cause it it wrap back to the start.
+        final int nextReadLocation = (readLocation + 1 == size) ? 0 : readLocation + 1;
 
         // in the for loop below, we are blocked reading unit another item is written, this is because we are empty ( aka size()=0)
         // inside the for loop, getting the 'writeLocation', this will serve as our read memory barrier.
         while (writeLocation == readLocation)
-            takeAtBlock();
+            blockAtTake();
 
         // purposely not volatile as the read memory barrier occurred above when we read 'writeLocation'
         final int value = data[readLocation];
@@ -90,7 +104,7 @@ public class LazyConcurrentBlockingIntQueue {
     /**
      * currently implement as a spin lock
      */
-    private void takeAtBlock() {
+    private void blockAtTake() {
     }
 
     /**
