@@ -6,12 +6,11 @@ public class LazyConcurrentBlockingIntQueue {
 
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
-    private static final int shift;
     private static final Unsafe unsafe;
 
     static {
         try {
-            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            final Field field = Unsafe.class.getDeclaredField("theUnsafe");
             field.setAccessible(true);
             unsafe = (Unsafe) field.get(null);
             READ_LOCATION_OFFSET = unsafe.objectFieldOffset
@@ -23,22 +22,9 @@ public class LazyConcurrentBlockingIntQueue {
         }
     }
 
-    private static final int base = unsafe.arrayBaseOffset(int[].class);
-
-    static {
-        int scale = unsafe.arrayIndexScale(int[].class);
-        if ((scale & (scale - 1)) != 0)
-            throw new Error("data type scale not a power of two");
-        shift = 31 - Integer.numberOfLeadingZeros(scale);
-    }
-
     private final int size = 1024;
     private final int[] data = new int[size];
-
-    // can only be updated from the reader thread
     private volatile int readLocation = 0;
-
-    // can only be updated from the writer thread
     private volatile int writeLocation = 0;
 
     /**
@@ -48,25 +34,28 @@ public class LazyConcurrentBlockingIntQueue {
      */
     public void add(int value) {
 
-
-        int nextWriteLocation = writeLocation + 1;
-
-        if (nextWriteLocation == size)
-            nextWriteLocation = 0;
+        final int writeLocation = this.writeLocation;
+        final int nextWriteLocation = (writeLocation + 1 == size) ? 0 : writeLocation + 1;
 
         if (nextWriteLocation == size - 1)
-            while (readLocation == 0) {
-            }
-        else
-            while (nextWriteLocation == readLocation - 1) {
-            }
 
-        unsafe.putOrderedInt(data, ((long) writeLocation << shift) + base, value);
+            while (readLocation == 0)
+                takeAtBlock();
+
+        else
+
+            while (nextWriteLocation + 1 == readLocation)
+                blockAtAdd();
+
+
+        // purposely not volatile see the comment below
+        data[writeLocation] = value;
+
+        // the line below, is where the write memory barrier occurs,
+        // we have just written back the data in the line above ( which is not require to have a memory barrier as we will be doing that in the line below
 
         // write back the next write location
         unsafe.putOrderedInt(this, WRITE_LOCATION_OFFSET, nextWriteLocation);
-
-        // writeLocation =  nextWriteLocation;
     }
 
     /**
@@ -77,21 +66,36 @@ public class LazyConcurrentBlockingIntQueue {
 
     public int take() {
 
+        final int readLocation = this.readLocation;
         int nextReadLocation = readLocation + 1;
 
         if (nextReadLocation == size)
             nextReadLocation = 0;
 
+        // in the for loop below, we are blocked reading unit another item is written, this is because we are empty ( aka size()=0)
+        // inside the for loop, getting the 'writeLocation', this will serve as our read memory barrier.
+        while (writeLocation == readLocation)
+            takeAtBlock();
 
-        // we are blocked reading waiting for another add
-        while (writeLocation == readLocation) {
-            // spin lock
-        }
+        // purposely not volatile as the read memory barrier occurred above when we read 'writeLocation'
+        final int value = data[readLocation];
 
-        final int value = unsafe.getIntVolatile(data, ((long) readLocation << shift) + base);
+        // the write memory barrier will occur here, as we are storing the nextReadLocation
         unsafe.putOrderedInt(this, READ_LOCATION_OFFSET, nextReadLocation);
 
         return value;
 
+    }
+
+    /**
+     * currently implement as a spin lock
+     */
+    private void takeAtBlock() {
+    }
+
+    /**
+     * currently implement as a spin lock
+     */
+    private void blockAtAdd() {
     }
 }
