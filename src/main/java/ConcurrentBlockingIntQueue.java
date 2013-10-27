@@ -6,12 +6,28 @@ import java.util.concurrent.TimeoutException;
 
 
 /**
- * A {@link java.util.Queue} that additionally supports operations
- * that wait for the queue to become non-empty when retrieving an
- * element, and wait for space to become available in the queue when
- * storing an element.
+ * A low latency, lock free, bounded blocking queue backed by an int[].
+ * This class mimics the interface of {@linkplain java.util.concurrent.BlockingQueue blocking queue},
+ * however works with primitive int so is unable to implement the BlockingQueue which handles {@link Object}.
  * <p/>
- * <p><tt>BlockingQueue</tt> methods come in four forms, with different ways
+ * This queue orders elements FIFO (first-in-first-out).  The
+ * <em>head</em> of the queue is that element that has been on the
+ * queue the longest time.  The <em>tail</em> of the queue is that
+ * element that has been on the queue the shortest time. New elements
+ * are inserted at the tail of the queue, and the queue retrieval
+ * operations obtain elements at the head of the queue.
+ * <p/>
+ * <p>This is a classic &quot;bounded buffer&quot;, in which a
+ * fixed-sized array holds elements inserted by producers and
+ * extracted by consumers.  Once created, the capacity cannot be
+ * changed.  Attempts to {@code put} an element into a full queue
+ * will result in the operation blocking; attempts to {@code take} an
+ * element from an empty queue will similarly block.
+ * <p/>
+ * <p>Due to the lock free nature of its  implementation, ordering works on a first come first served basis,
+ * so to ensure strict FIFO ordering, you should limit a single thread to writing and a single thread to reading</p>
+ * <p/>
+ * Methods come in four forms, with different ways
  * of handling operations that cannot be satisfied immediately, but may be
  * satisfied at some point in the future:
  * one throws an exception, the second returns a special value (either
@@ -38,10 +54,10 @@ import java.util.concurrent.TimeoutException;
  * </tr>
  * <tr>
  * <td><b>Remove</b></td>
- * <td>{@link #remove remove()}</td>
+ * <td>not applicable</td>
  * <td>{@link #poll poll()}</td>
  * <td>{@link #take take()}</td>
- * <td>{@link #poll(long, java.util.concurrent.TimeUnit) poll(time, unit)}</td>
+ * <td>{@link #poll(long, TimeUnit) poll(time, unit)}</td>
  * </tr>
  * <tr>
  * <td><b>Examine</b></td>
@@ -52,35 +68,21 @@ import java.util.concurrent.TimeoutException;
  * </tr>
  * </table>
  * <p/>
- * <p>A <tt>BlockingQueue</tt> does not accept <tt>null</tt> elements.
- * Implementations throw <tt>NullPointerException</tt> on attempts
- * to <tt>add</tt>, <tt>put</tt> or <tt>offer</tt> a <tt>null</tt>.  A
- * <tt>null</tt> is used as a sentinel value to indicate failure of
- * <tt>poll</tt> operations.
- * <p/>
- * <p>A <tt>BlockingQueue</tt> may be capacity bounded. At any given
+ * <
+ * <p>A <tt>ConcurrentBlockingIntQueue</tt> is capacity bounded. At any given
  * time it may have a <tt>remainingCapacity</tt> beyond which no
  * additional elements can be <tt>put</tt> without blocking.
- * A <tt>BlockingQueue</tt> without any intrinsic capacity constraints always
- * reports a remaining capacity of <tt>Integer.MAX_VALUE</tt>.
  * <p/>
- * <p> <tt>BlockingQueue</tt> implementations are designed to be used
- * primarily for producer-consumer queues, but additionally support
- * the {@link java.util.Collection} interface.  So, for example, it is
- * possible to remove an arbitrary element from a queue using
- * <tt>remove(x)</tt>. However, such operations are in general
- * <em>not</em> performed very efficiently, and are intended for only
- * occasional use, such as when a queued message is cancelled.
+ * <p> It is not possible to remove an arbitrary element from a queue using
+ * <tt>remove(x)</tt>. As this operations would not performed very efficiently.
  * <p/>
- * <p> <tt>BlockingQueue</tt> implementations are thread-safe.  All
+ * <p>All of <tt>ConcurrentBlockingIntQueue</tt> implementations are thread-safe.  All
  * queuing methods achieve their effects atomically using internal
- * locks or other forms of concurrency control. However, the
+ * using lock free statagies, such as sping locks. However, the
  * <em>bulk</em> Collection operations <tt>addAll</tt>,
  * <tt>containsAll</tt>, <tt>retainAll</tt> and <tt>removeAll</tt> are
- * <em>not</em> necessarily performed atomically unless specified
- * otherwise in an implementation. So it is possible, for example, for
- * <tt>addAll(c)</tt> to fail (throwing an exception) after adding
- * only some of the elements in <tt>c</tt>.
+ * <em>not</em>  performed atomically, So it is possible, for example, for
+ * <tt>drainTo(c)</tt> to duplicate a result <tt>c</tt>.
  * <p/>
  * <p>A <tt>BlockingQueue</tt> does <em>not</em> intrinsically support
  * any kind of &quot;close&quot; or &quot;shutdown&quot; operation to
@@ -144,7 +146,7 @@ import java.util.concurrent.TimeoutException;
  * @author Rob Austin
  * @since 1.0
  */
-public class ConcurrentBlockingIntQueue {   // implements BlockingQueue<int>
+public class ConcurrentBlockingIntQueue {
 
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
