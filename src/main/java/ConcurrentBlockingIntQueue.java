@@ -140,7 +140,7 @@ import java.util.concurrent.TimeoutException;
  * Java Collections Framework</a>.
  *
  * @author Rob Austin
- * @since 1.0
+ * @since 1.1
  */
 public class ConcurrentBlockingIntQueue {
 
