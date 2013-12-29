@@ -4,7 +4,6 @@ import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-
 /**
  * A low latency, lock free, primitive bounded blocking queue backed by an int[].
  * This class mimics the interface of {@linkplain java.util.concurrent.BlockingQueue BlockingQueue},
