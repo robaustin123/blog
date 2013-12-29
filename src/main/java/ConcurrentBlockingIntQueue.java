@@ -6,9 +6,16 @@ import java.util.concurrent.TimeoutException;
 
 
 /**
- * A low latency, lock free, bounded blocking queue backed by an int[].
- * This class mimics the interface of {@linkplain java.util.concurrent.BlockingQueue blocking queue},
- * however works with primitive int so is unable to implement the BlockingQueue which handles {@link Object}.
+ * A low latency, lock free, primitive bounded blocking queue backed by an int[].
+ * This class mimics the interface of {@linkplain java.util.concurrent.BlockingQueue BlockingQueue},
+ * however works with primitive ints rather than {@link Object}s, so is unable to actually implement the BlockingQueue .
+ * <p/>
+ * This class takes advantage of the Unsafe.putOrderedObject, which allows us to create non-blocking code with guaranteed writes.
+ * These writes will not be re-orderd by instruction reordering. Under the covers it uses the faster store-store barrier, rather than the the slower store-load barrier, which is used when doing a volatile write.
+ * One of the trade off with this improved performance is we are limited to a single producer, single consumer.
+ * For further information on this see, the blog post <a href="http://robsjava.blogspot.co.uk/2013/06/a-faster-volatile.html">A Faster Volatile</a> by Rob Austin.
+ *
+ * <p/>
  * <p/>
  * This queue orders elements FIFO (first-in-first-out).  The
  * <em>head</em> of the queue is that element that has been on the
@@ -20,14 +27,12 @@ import java.util.concurrent.TimeoutException;
  * <p>This is a classic &quot;bounded buffer&quot;, in which a
  * fixed-sized array holds elements inserted by producers and
  * extracted by consumers.  Once created, the capacity cannot be
- * changed.  Attempts to {@code put} an element into a full queue
- * will result in the operation blocking; attempts to {@code take} an
+ * changed.  Attempts to {@link #put put(e)} an element into a full queue
+ * will result in the operation blocking; attempts to {@link #take take()} an
  * element from an empty queue will similarly block.
  * <p/>
- * <p>Due to the lock free nature of its  implementation, ordering works on a first come first served basis,
- * so to ensure strict FIFO ordering, you should limit a single thread to writing and a single thread to reading</p>
- * <p/>
- * Methods come in four forms, with different ways
+ * <p>Due to the lock free nature of its  implementation, ordering works on a first come first served basis.<p/>
+ *<p> Methods come in four forms, with different ways
  * of handling operations that cannot be satisfied immediately, but may be
  * satisfied at some point in the future:
  * one throws an exception, the second returns a special value (either
@@ -35,9 +40,8 @@ import java.util.concurrent.TimeoutException;
  * blocks the current thread indefinitely until the operation can succeed,
  * and the fourth blocks for only a given maximum time limit before giving
  * up.  These methods are summarized in the following table:
- * <p/>
- * <p/>
- * <table BORDER CELLPADDING=3 CELLSPACING=1>
+ *</p>
+ <p><table BORDER CELLPADDING=3 CELLSPACING=1>
  * <tr>
  * <td></td>
  * <td ALIGN=CENTER><em>Throws exception</em></td>
@@ -54,37 +58,32 @@ import java.util.concurrent.TimeoutException;
  * </tr>
  * <tr>
  * <td><b>Remove</b></td>
- * <td>not applicable</td>
  * <td>{@link #poll poll()}</td>
+ * <td>not applicable</td>
  * <td>{@link #take take()}</td>
  * <td>{@link #poll(long, TimeUnit) poll(time, unit)}</td>
  * </tr>
  * <tr>
  * <td><b>Examine</b></td>
- * <td>{@link #element element()}</td>
- * <td>{@link #peek peek()}</td>
  * <td><em>not applicable</em></td>
  * <td><em>not applicable</em></td>
+ * <td><em>not applicable</em></td>
+ * <td>{@link #peek(long, TimeUnit) peek(time, unit)}</td>>
  * </tr>
  * </table>
+ * </p>
  * <p/>
- * <
  * <p>A <tt>ConcurrentBlockingIntQueue</tt> is capacity bounded. At any given
  * time it may have a <tt>remainingCapacity</tt> beyond which no
  * additional elements can be <tt>put</tt> without blocking.
  * <p/>
  * <p> It is not possible to remove an arbitrary element from a queue using
- * <tt>remove(x)</tt>. As this operations would not performed very efficiently.
+ * <tt>remove(x)</tt>. As this operation would not performed very efficiently.
  * <p/>
- * <p>All of <tt>ConcurrentBlockingIntQueue</tt> implementations are thread-safe.  All
- * queuing methods achieve their effects atomically using internal
- * using lock free statagies, such as sping locks. However, the
- * <em>bulk</em> Collection operations <tt>addAll</tt>,
- * <tt>containsAll</tt>, <tt>retainAll</tt> and <tt>removeAll</tt> are
- * <em>not</em>  performed atomically, So it is possible, for example, for
- * <tt>drainTo(c)</tt> to duplicate a result <tt>c</tt>.
+ * <p>All of <tt>ConcurrentBlockingIntQueue</tt> methods are thread-safe when used with a single producer and single consumer, internal atomicity
+ * is archived using lock free strategies, such as sping locks.
  * <p/>
- * <p>A <tt>BlockingQueue</tt> does <em>not</em> intrinsically support
+ * <p>Like a <tt>BlockingQueue</tt>, the ConcurrentBlockingIntQueue does <em>not</em> intrinsically support
  * any kind of &quot;close&quot; or &quot;shutdown&quot; operation to
  * indicate that no more items will be added.  The needs and usage of
  * such features tend to be implementation-dependent. For example, a
@@ -124,10 +123,8 @@ import java.util.concurrent.TimeoutException;
  *     BlockingQueue q = new SomeQueueImplementation();
  *     Producer p = new Producer(q);
  *     Consumer c1 = new Consumer(q);
- *     Consumer c2 = new Consumer(q);
  *     new Thread(p).start();
  *     new Thread(c1).start();
- *     new Thread(c2).start();
  *   }
  * }
  * </pre>
@@ -151,7 +148,6 @@ public class ConcurrentBlockingIntQueue {
     private static final long READ_LOCATION_OFFSET;
     private static final long WRITE_LOCATION_OFFSET;
     private static final Unsafe unsafe;
-
     static {
         try {
             final Field field = Unsafe.class.getDeclaredField("theUnsafe");
@@ -165,13 +161,10 @@ public class ConcurrentBlockingIntQueue {
             throw new AssertionError(e);
         }
     }
-
     // about 128 kb to fit in a L1 cache ( the 4 is from the size of a int, 4 bytes )
     private final int size = 1024 * (128 / 4);
-
     // intentionally not volatile, as we are carefully ensuring that the memory barriers are controlled below by other objects
     private final int[] data = new int[size];
-
     // we set volatiles here, for the writes we use putOrderedInt ( as this is quicker ),
     // but for the read the is no performance benefit un using getOrderedInt.
     private volatile int readLocation = 0;
@@ -254,6 +247,39 @@ public class ConcurrentBlockingIntQueue {
     }
 
     /**
+     * Retrieves, but does not remove, the head of this queue.
+     *
+     * @param timeout how long to wait before giving up, in units of
+     *                <tt>unit</tt>
+     * @param unit    a <tt>TimeUnit</tt> determining how to interpret the
+     *                <tt>timeout</tt> parameter
+     *
+     * @return the head of this queue
+     * @throws TimeoutException if timeout time is exceeded
+     */
+
+    public int peek(long timeout, TimeUnit unit)
+            throws InterruptedException, TimeoutException {
+
+        // we want to minimize the number of volatile reads, so we read the readLocation just once.
+        final int readLocation = this.readLocation;
+
+        final long timeoutAt = System.nanoTime() + unit.toNanos(timeout);
+
+        // in the for loop below, we are blocked reading unit another item is written, this is because we are empty ( aka size()=0)
+        // inside the for loop, getting the 'writeLocation', this will serve as our read memory barrier.
+
+        while (writeLocation == readLocation)
+            if (!blockAtTake(timeoutAt))
+                throw new TimeoutException();
+
+
+        // purposely not volatile as the read memory barrier occurred above when we read ' this.readLocation'
+        return data[this.readLocation];
+
+    }
+
+    /**
      * currently implement as a spin lock
      */
     private void blockAtTake() {
@@ -293,7 +319,7 @@ public class ConcurrentBlockingIntQueue {
      *
      * @param value the element to add
      * @return <tt>true</tt> if the element was added to this queue, else
-     *         <tt>false</tt>
+     * <tt>false</tt>
      * @throws NullPointerException     if the specified element is null
      * @throws IllegalArgumentException if some property of the specified
      *                                  element prevents it from being added to this queue
@@ -377,7 +403,7 @@ public class ConcurrentBlockingIntQueue {
      * @param unit    a <tt>TimeUnit</tt> determining how to interpret the
      *                <tt>timeout</tt> parameter
      * @return <tt>true</tt> if successful, or <tt>false</tt> if
-     *         the specified waiting time elapses before space is available
+     * the specified waiting time elapses before space is available
      * @throws InterruptedException     if interrupted while waiting
      * @throws ClassCastException       if the class of the specified element
      *                                  prevents it from being added to this queue
@@ -440,7 +466,7 @@ public class ConcurrentBlockingIntQueue {
      * @param unit    a <tt>TimeUnit</tt> determining how to interpret the
      *                <tt>timeout</tt> parameter
      * @return the head of this queue, or throws a <tt>TimeoutException</tt> if the
-     *         specified waiting time elapses before an element is available
+     * specified waiting time elapses before an element is available
      * @throws InterruptedException if interrupted while waiting
      * @throws TimeoutException     if timeout time is exceeded
      */
