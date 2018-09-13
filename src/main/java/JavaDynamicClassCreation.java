@@ -1,3 +1,5 @@
+
+
 import sun.misc.Unsafe;
 
 import javax.tools.*;
@@ -7,6 +9,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.ProtectionDomain;
 
 import static java.util.Collections.singletonList;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
@@ -69,7 +72,11 @@ public class JavaDynamicClassCreation {
         final Field f = Unsafe.class.getDeclaredField("theUnsafe");
         f.setAccessible(true);
         final Unsafe unsafe = (Unsafe) f.get(null);
-        final Class aClass = unsafe.defineClass(fullClassName, bytes, 0, bytes.length);
+        ClassLoader classLoader = new ClassLoader() {
+        };
+
+        ProtectionDomain protectionDomain = null;
+        final Class aClass = unsafe.defineClass(fullClassName, bytes, 0, bytes.length, classLoader ,protectionDomain);
 
         final Object o = aClass.newInstance();
         System.out.println(o);
